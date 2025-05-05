@@ -203,7 +203,7 @@ L_n_CD <- function(theta, F1, F2m, F2p){
 #' 
 #' @param data an nxd data frame containing n observations of d variables
 #' @param Type a vector containing the type of the variables, "C" for continuous and "D" for discrete
-#' @param parallel a boolean encoding whether the computations should be parallelized
+#' @param ncores an integer specifying the number of cores to be used for parallel computation. "1" by default, leading to non-parallel computation.
 #' @return the dxd estimated correlation matrix of the Gaussian copula
 #'
 #' @examples
@@ -214,12 +214,12 @@ L_n_CD <- function(theta, F1, F2m, F2p){
 #' 
 #' @export
 
-rho_estim <- function(data,Type,parallel=FALSE){
+rho_estim <- function(data,Type,ncores=1){
     
     F = fdr_d(data, Type)
     M_rho = diag(length(Type))
     
-    if(parallel==FALSE){
+    if(ncores==1){
         
         for (i in 1:(length(Type)-1)){
             for (j in (i+1):length(Type)){
@@ -247,7 +247,7 @@ rho_estim <- function(data,Type,parallel=FALSE){
       if (nzchar(chk) && chk == "TRUE") {
         Ncpus <- 2
       } else {
-        Ncpus <- parallel::detectCores()-1
+        Ncpus <- ncores
       }
         cl <- parallel::makeCluster(Ncpus, outfile="")
         doSNOW::registerDoSNOW(cl)
@@ -346,6 +346,60 @@ cor_network_graph <- function(R, TS, binary = TRUE, legend){
        edge.color = "black")
   legend(1.2,0.8,cex=0.6, unique(legend),fill=colors)
   graphics::text(1.1,1, stringr::str_glue("threshold = ",TS) ,col="black", cex=1)
+}
+
+
+#' omega_estim
+#' 
+#' @description This function enables the user estimate the precision matrix of the latent variables via gLasso inversion
+#' 
+#' @param data a dataset of size nxd or a correlation matrix R of size dxd
+#' @param Type a vector containing the type of the variables, "C" for continuous and "D" for discrete (in the case a data set is entered as the first parameter)
+#' @param lambda a grid of penalization parameters to be evaluated
+#' @param n the sample size used (in the case of a correlation matrix entered as the first parameter)
+#' 
+#' @return a list containing the correlation matrix, the optimal precision matrix, the optimal lambda, the minimal HBIC
+#'
+#' @examples
+#' M <- diag_block_matrix(c(3,4,5),c(0.7,0.8,0.2))
+#' data <- CopulaSim(20,M,c(rep("qnorm(0,1)",6),rep("qexp(0.5)",4),
+#' rep("qbinom(4,0.8)",2)),random=FALSE)[[1]]
+#' \dontrun{P <- omega_estim(data,c(rep("C",10),rep("D",2)),seq(0.01,1,0.05))}
+#' 
+#' @export
+
+omega_estim <- function(data,Type,lambda,n){
+  
+  if(isSymmetric(as.matrix(data))){
+    
+    R <- data
+    n <- n
+    
+    p <- dim(data)[1]
+    
+  }else{
+    
+  n <- dim(data)[1]
+  p <- dim(data)[2]
+  R <- rho_estim(data,Type)
+  
+  }
+  
+  HBIC <- c()
+  for(l in 1:length(lambda)){
+    
+   OM <- huge::huge(R,lambda[l],method="glasso")$icov[[1]]
+   crit <- matrixcalc::matrix.trace(R%*%OM)-log(det(OM))+log(log(n))*(log(p)/n)*sum(OM!=0)
+   HBIC <- c(HBIC,crit)
+  
+   }
+  
+  HBIC_min <- min(HBIC,na.rm=T)
+  lamb_min <- lambda[which(HBIC==HBIC_min)]
+  
+  OM <- huge::huge(R,lamb_min,method="glasso")$icov[[1]]
+  
+  return(list(R,OM,lamb_min,HBIC_min))
 }
 
 #' ICGC dataset
