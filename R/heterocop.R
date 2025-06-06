@@ -358,7 +358,7 @@ cor_network_graph <- function(R, TS, binary = TRUE, legend){
 #' @param lambda a grid of penalization parameters to be evaluated
 #' @param n the sample size used (in the case of a correlation matrix entered as the first parameter)
 #' 
-#' @return a list containing the correlation matrix, the optimal precision matrix, the optimal lambda, the minimal HBIC
+#' @return a list containing the correlation matrix, the optimal precision matrix, the optimal lambda, the minimal HBIC, all values of lambda, all corresponding HBIC values
 #'
 #' @examples
 #' M <- diag_block_matrix(c(3,4,5),c(0.7,0.8,0.2))
@@ -377,18 +377,20 @@ omega_estim <- function(data,Type,lambda,n){
     
     p <- dim(data)[1]
     
+    names <- colnames(data)
+    
   }else{
     
   n <- dim(data)[1]
   p <- dim(data)[2]
   R <- rho_estim(data,Type)
-  
+  names <- colnames(R)
   }
   
   HBIC <- c()
   for(l in 1:length(lambda)){
     
-   OM <- huge::huge(R,lambda[l],method="glasso")$icov[[1]]
+   OM <- huge::huge(R,lambda[l],method="glasso",verbose=F)$icov[[1]]
    crit <- matrixcalc::matrix.trace(R%*%OM)-log(det(OM))+log(log(n))*(log(p)/n)*sum(OM!=0)
    HBIC <- c(HBIC,crit)
   
@@ -397,10 +399,15 @@ omega_estim <- function(data,Type,lambda,n){
   HBIC_min <- min(HBIC,na.rm=T)
   lamb_min <- lambda[which(HBIC==HBIC_min)]
   
-  OM <- huge::huge(R,lamb_min,method="glasso")$icov[[1]]
+  OM <- huge::huge(R,lamb_min,method="glasso",verbose = F)$icov[[1]]
   
-  return(list(R,OM,lamb_min,HBIC_min))
+  colnames(OM) <- names
+  rownames(OM) <- names
+  
+  return(list(R,OM,paste0("The minimal lambda is ", lamb_min),paste0("The minimal HBIC is ", HBIC_min), lambda, HBIC))
 }
+
+
 
 #' ICGC dataset
 #'

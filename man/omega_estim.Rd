@@ -16,7 +16,7 @@ omega_estim(data, Type, lambda, n)
 \item{n}{the sample size used (in the case of a correlation matrix entered as the first parameter)}
 }
 \value{
-a list containing the correlation matrix, the optimal precision matrix, the optimal lambda, the minimal HBIC
+a list containing the correlation matrix, the optimal precision matrix, the optimal lambda, the minimal HBIC, all values of lambda, all corresponding HBIC values
 }
 \description{
 This function enables the user estimate the precision matrix of the latent variables via gLasso inversion
@@ -25,6 +25,6 @@ This function enables the user estimate the precision matrix of the latent varia
 M <- diag_block_matrix(c(3,4,5),c(0.7,0.8,0.2))
 data <- CopulaSim(20,M,c(rep("qnorm(0,1)",6),rep("qexp(0.5)",4),
 rep("qbinom(4,0.8)",2)),random=FALSE)[[1]]
-\donttest{P <- omega_estim(data,c(rep("C",10),rep("D",2)),seq(0.01,1,0.05))}
+\dontrun{P <- omega_estim(data,c(rep("C",10),rep("D",2)),seq(0.01,1,0.05))}
 
 }
